@@ -1,28 +1,55 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
 
-set "DiscordPath=%localappdata%\Discord"
+set "DiscordBase=%localappdata%\Discord"
+set "ProfileName=Multi-Discord"
+set "ProfilesPath=%DiscordBase%\profiles"
+set "ProfilePath=%ProfilesPath%\%ProfileName%"
+
+REM Find latest installed Discord version
 set "LatestVersion="
-
-for /d %%d in ("%DiscordPath%\app-*") do (
-    set "Version=%%~nxd"
+for /d %%D in ("%DiscordBase%\app-*") do (
+    set "Version=%%~nxD"
     set "Version=!Version:app-=!"
     if "!Version!" gtr "!LatestVersion!" (
         set "LatestVersion=!Version!"
     )
 )
 
-if defined LatestVersion (
-    set "DiscordExe=%DiscordPath%\app-!LatestVersion!\Discord.exe"
-    if exist "!DiscordExe!" (
-        start "" "!DiscordExe!" --multi-instance
-    ) else (
-        echo Discord executable not found‚ for !LatestVersion! version
-        pause
-    )
+if not defined LatestVersion exit /b
+set "DiscordExe=%DiscordBase%\app-!LatestVersion!\Discord.exe"
+if not exist "!DiscordExe!" exit /b
+
+REM Ensure profiles directory exists
+if not exist "%ProfilesPath%" mkdir "%ProfilesPath%"
+
+REM --- Kill any Discord process using this Alt profile ---
+set "cleaning=false"
+powershell -Command ^
+  "Get-WmiObject Win32_Process | Where-Object { $_.Name -eq 'Discord.exe' -and $_.CommandLine -like '*Multi-Discord*' } | ForEach-Object { $_.ProcessId }" > "%temp%\alt_pids.txt"
+
+setlocal EnableDelayedExpansion
+set "pids_exist=false"
+for /f %%p in (%temp%\alt_pids.txt) do (
+  set "pids_exist=true"
+  taskkill /pid %%p /f >nul 2>&1
+)
+endlocal & set "cleaning=%pids_exist%"
+
+del "%temp%\alt_pids.txt"
+REM --- End kill block ---
+
+REM Remove and recreate the profile folder
+if exist "%ProfilePath%" rmdir /s /q "%ProfilePath%"
+mkdir "%ProfilePath%"
+
+REM Launch Discord with the selected profile only if not cleaning
+if /i "%cleaning%"=="false" (
+  set "DISCORD_USER_DATA_DIR=%ProfilePath%"
+  start "" "!DiscordExe!" --multi-instance --disable-system-tray
 ) else (
-    echo Discord is not installed in %localappdata%\Discord
-    pause
+  echo Discord processes were killed, skipping launch.
 )
 
 endlocal
+exit /b
