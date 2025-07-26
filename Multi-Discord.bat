@@ -26,21 +26,20 @@ if not exist "%ProfilesPath%" mkdir "%ProfilesPath%"
 REM --- Kill any Discord process using this Alt profile ---
 set "cleaning=false"
 powershell -Command ^
-  "Get-WmiObject Win32_Process | Where-Object { $_.Name -eq 'Discord.exe' -and $_.CommandLine -match '%ProfileName%' } | ForEach-Object { $_.ProcessId }" > "%temp%\alt_pids.txt"
+  "Get-WmiObject Win32_Process | Where-Object { $_.Name -eq 'Discord.exe' -and $_.CommandLine -match '%ProfileName%' } | ForEach-Object { $_.ProcessId }" > "%temp%\%ProfileName%_alt_pids.txt"
 
 setlocal EnableDelayedExpansion
 set "pids_exist=false"
 
 REM Check if file is not empty before proceeding
-for %%A in ("%temp%\alt_pids.txt") do if %%~zA gtr 0 (
-  for /f %%p in (%temp%\alt_pids.txt) do (
+for %%A in ("%temp%\%ProfileName%_alt_pids.txt") do if %%~zA gtr 0 (
+  for /f %%p in (%temp%\%ProfileName%_alt_pids.txt) do (
     set "pids_exist=true"
     taskkill /pid %%p /f >nul 2>&1
   )
 )
 endlocal & set "cleaning=%pids_exist%"
 
-echo %cleaning%
 del "%temp%\%ProfileName%_alt_pids.txt"
 REM --- End kill block ---
 
