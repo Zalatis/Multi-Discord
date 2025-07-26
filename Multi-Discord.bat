@@ -26,7 +26,7 @@ if not exist "%ProfilesPath%" mkdir "%ProfilesPath%"
 REM --- Kill any Discord process using this Alt profile ---
 set "cleaning=false"
 powershell -Command ^
-  "Get-WmiObject Win32_Process | Where-Object { $_.Name -eq 'Discord.exe' -and $_.CommandLine -like '*Multi-Discord*' } | ForEach-Object { $_.ProcessId }" > "%temp%\alt_pids.txt"
+  "Get-WmiObject Win32_Process | Where-Object { $_.Name -eq 'Discord.exe' -and $_.CommandLine -like '*%ProfileName%*' } | ForEach-Object { $_.ProcessId }" > "%temp%\alt_pids.txt"
 
 setlocal EnableDelayedExpansion
 set "pids_exist=false"
