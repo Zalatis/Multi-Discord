@@ -6,7 +6,6 @@ set "ProfileName=Multi-Discord"
 set "ProfilesPath=%DiscordBase%\profiles"
 set "ProfilePath=%ProfilesPath%\%ProfileName%"
 
-REM Find latest installed Discord version
 set "LatestVersion="
 for /d %%D in ("%DiscordBase%\app-*") do (
     set "Version=%%~nxD"
@@ -16,43 +15,41 @@ for /d %%D in ("%DiscordBase%\app-*") do (
     )
 )
 
-if not defined LatestVersion exit /b
-set "DiscordExe=%DiscordBase%\app-!LatestVersion!\Discord.exe"
-if not exist "!DiscordExe!" exit /b
+if not defined LatestVersion (
+    echo Discord non trouve.
+    exit /b
+)
 
-REM Ensure profiles directory exists
+set "DiscordExe=%DiscordBase%\app-!LatestVersion!\Discord.exe"
+if not exist "!DiscordExe!" (
+    echo Discord.exe introuvable.
+    exit /b
+)
+
 if not exist "%ProfilesPath%" mkdir "%ProfilesPath%"
 
-REM --- Kill any Discord process using this Alt profile ---
 set "cleaning=false"
-powershell -Command ^
-  "Get-WmiObject Win32_Process | Where-Object { $_.Name -eq 'Discord.exe' -and $_.CommandLine -match '%ProfileName%' } | ForEach-Object { $_.ProcessId }" > "%temp%\%ProfileName%_alt_pids.txt"
 
-setlocal EnableDelayedExpansion
-set "pids_exist=false"
+powershell -NoProfile -Command ^
+  "$profileName = '%ProfileName%'; Get-WmiObject Win32_Process | Where-Object { $_.Name -eq 'Discord.exe' -and $_.CommandLine -match $profileName } | ForEach-Object { $_.ProcessId }" > "%temp%\%ProfileName%_alt_pids.txt"
 
-REM Check if file is not empty before proceeding
-for %%A in ("%temp%\%ProfileName%_alt_pids.txt") do if %%~zA gtr 0 (
-  for /f %%p in (%temp%\%ProfileName%_alt_pids.txt) do (
-    set "pids_exist=true"
-    taskkill /pid %%p /f >nul 2>&1
-  )
+if exist "%temp%\%ProfileName%_alt_pids.txt" (
+    for /f %%p in (%temp%\%ProfileName%_alt_pids.txt) do (
+        set "cleaning=true"
+        taskkill /pid %%p /f >nul 2>&1
+    )
 )
-endlocal & set "cleaning=%pids_exist%"
-
 del "%temp%\%ProfileName%_alt_pids.txt"
-REM --- End kill block ---
 
-REM Remove and recreate the profile folder
 if exist "%ProfilePath%" rmdir /s /q "%ProfilePath%"
 mkdir "%ProfilePath%"
 
-REM Launch Discord with the selected profile only if not cleaning
 if /i "%cleaning%"=="false" (
-  set "DISCORD_USER_DATA_DIR=%ProfilePath%"
-  start "" "!DiscordExe!" --multi-instance --disable-system-tray
+    set "DISCORD_USER_DATA_DIR=%ProfilePath%"
+    start "" "!DiscordExe!" --multi-instance --disable-system-tray
 ) else (
-  echo Discord processes were killed, skipping launch.
+    echo Discord processes were killed, skipping launch.
 )
+
 endlocal
 exit /b
